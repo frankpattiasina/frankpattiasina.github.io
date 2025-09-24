@@ -170,45 +170,32 @@
   updateWeather();
   setInterval(updateWeather, 30*60*1000);
 
-  async function setDailyQuote() {
+  function setDailyQuote() {
     const el = document.getElementById("daily-quote");
 
-    // small local fallback if API fails
-    const fallback = [
-      { text: "There is nothing either good or bad, but thinking makes it so.", author: "William Shakespeare" },
-      { text: "All the world’s a stage, and all the men and women merely players.", author: "William Shakespeare" },
-      { text: "Some are born great, some achieve greatness, and some have greatness thrust upon them.", author: "William Shakespeare" }
+    // Library of quotes I took from Goodreads
+    const quotes = [
+      { text: "Happiness in intelligent people is the rarest thing I know.", author: "Ernest Hemingway", source: "The Garden of Eden" },
+      { text: "The most painful thing is losing yourself in the process of loving someone too much, and forgetting that you are special too", author: "Ernest Hemingway", source: "Men Without Women" },
+      { text: "All thinking men are atheists", author: "Ernest Hemingway", source: "A Farewell to Arms" },
+      { text: "You can't get away from yourself by moving from one place to another.", author: "Ernest Hemingway", source: "The Sun Also Rises" },
+      { text: "Isn't it pretty to think so?", author: "Ernest Hemingway", source: "The Sun Also Rises" },
+      { text: "I opened myself to the gentle indifference of the world.", author: " Albert Camus", source: "L'Étranger" },
+      { text: "Since we're all going to die, it's obvious that when and how don't matter.", author: " Albert Camus", source: "L'Étranger" },
+      { text: "If something is going to happen to me, I want to be there.", author: " Albert Camus", source: "L'Étranger" },
+      { text: "After awhile you could get used to anything.", author: " Albert Camus", source: "L'Étranger" },
+      { text: "The truth is that everyone is bored, and devotes himself to cultivating habits.", author: " Albert Camus", source: "The Plague" },
+      { text: "I think, therefore I am.", author: "René Descartes", source: "Discourse on Method" },
+      { text: "One cannot step twice in the same river.", author: "Heraclitus", source: "Fragments" }
     ];
 
-    // helper: fetch with timeout (so the UI doesn't hang)
-    const withTimeout = (url, ms = 6000) => {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), ms);
-      return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(t));
-    };
+    // Randomly pick one
+    const q = quotes[Math.floor(Math.random() * quotes.length)];
 
-    try {
-      // You can use either "shakespeare" or "William%20Shakespeare"
-      const res = await withTimeout("https://api.quotable.io/random?author=William%20Shakespeare");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json(); // { content, author, ... }
-      const text = (data && data.content) ? data.content : null;
-      const author = (data && data.author) ? data.author : "William Shakespeare";
-
-      if (text) {
-        el.textContent = `“${text}” — ${author}`;
-        return;
-      }
-      throw new Error("Empty content from API");
-    } catch (e) {
-      // graceful fallback
-      const q = fallback[Math.floor(Math.random() * fallback.length)];
-      el.textContent = `“${q.text}” — ${q.author}`;
-      console.warn("Quote API failed, using fallback:", e);
-    }
+    // Format: "quote" — Author, Source
+    el.textContent = `“${q.text}” — ${q.author}, ${q.source}`;
   }
 
-  // call once on load
   setDailyQuote();
 </script>
 </body>
