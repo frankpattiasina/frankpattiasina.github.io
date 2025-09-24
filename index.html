@@ -118,11 +118,15 @@
 
       // Reverse geocode via Open-Meteo Geocoding API (CORS-friendly)
       const geoRes = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=en&format=json`
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`
       );
       const geo = await geoRes.json();
-      const r = (geo && geo.results && geo.results[0]) || {};
-      const city = r.name || r.admin2 || r.admin1 || "Location";
+      const city =
+        geo.city ||
+        geo.locality ||
+        geo.principalSubdivision ||   // e.g., state/province
+        geo.countryName ||
+        "Location";
 
       document.getElementById('weather').textContent = `${city}: ${icon} ${temp}°C • ${text}`;
     }catch(e){
