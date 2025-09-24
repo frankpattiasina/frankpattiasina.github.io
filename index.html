@@ -166,23 +166,45 @@
   updateWeather();
   setInterval(updateWeather, 30*60*1000);
 
-  function setDailyQuote(){
-    const quotes=[
-      {text:"The unexamined life is not worth living.", author:"Socrates"},
-      {text:"Happiness depends upon ourselves.", author:"Aristotle"},
-      {text:"Man is condemned to be free.", author:"Jean-Paul Sartre"},
-      {text:"God is dead. God remains dead. And we have killed him.", author:"Friedrich Nietzsche"},
-      {text:"Hell is other people.", author:"Jean-Paul Sartre"},
-      {text:"One cannot step twice in the same river.", author:"Heraclitus"},
-      {text:"I think, therefore I am.", author:"René Descartes"},
-      {text:"Life must be understood backward. But it must be lived forward.", author:"Søren Kierkegaard"},
-      {text:"Man is the measure of all things.", author:"Protagoras"},
-      {text:"Even while they teach, men learn.", author:"Seneca"}
+  async function setDailyQuote() {
+    const el = document.getElementById("daily-quote");
+
+    // small local fallback if API fails
+    const fallback = [
+      { text: "There is nothing either good or bad, but thinking makes it so.", author: "William Shakespeare" },
+      { text: "All the world’s a stage, and all the men and women merely players.", author: "William Shakespeare" },
+      { text: "Some are born great, some achieve greatness, and some have greatness thrust upon them.", author: "William Shakespeare" }
     ];
-    const dayIndex=new Date().getDate()%quotes.length;
-    const quote=quotes[dayIndex];
-    document.getElementById('daily-quote').textContent=`“${quote.text}” — ${quote.author}`;
+
+    // helper: fetch with timeout (so the UI doesn't hang)
+    const withTimeout = (url, ms = 6000) => {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), ms);
+      return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(t));
+    };
+
+    try {
+      // You can use either "shakespeare" or "William%20Shakespeare"
+      const res = await withTimeout("https://api.quotable.io/random?author=William%20Shakespeare");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json(); // { content, author, ... }
+      const text = (data && data.content) ? data.content : null;
+      const author = (data && data.author) ? data.author : "William Shakespeare";
+
+      if (text) {
+        el.textContent = `“${text}” — ${author}`;
+        return;
+      }
+      throw new Error("Empty content from API");
+    } catch (e) {
+      // graceful fallback
+      const q = fallback[Math.floor(Math.random() * fallback.length)];
+      el.textContent = `“${q.text}” — ${q.author}`;
+      console.warn("Quote API failed, using fallback:", e);
+    }
   }
+
+  // call once on load
   setDailyQuote();
 </script>
 </body>
