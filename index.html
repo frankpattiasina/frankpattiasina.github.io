@@ -22,7 +22,7 @@
     .pill i{width:14px;height:14px;border-radius:5px;background:linear-gradient(180deg,#fff,rgba(255,255,255,.7));opacity:.7}
     h1{margin:0;font-size:clamp(22px,2vw,28px);letter-spacing:-.01em;color:#fff;font-weight:700}
     .sub{margin:2px 0 0;color:var(--muted);font-size:13px;font-style:italic;max-width:500px}
-    .status-card{display:grid;gap:4px;padding:10px 12px;border-radius:12px;background:var(--tile);border:1px solid var(--tile-border);backdrop-filter:blur(10px);box-shadow:var(--shadow);font-size:13px;min-width:150px}
+    .status-card{display:grid;gap:4px;padding:10px 12px;border-radius:12px;background:var(--tile);border:1px solid var(--tile-border);backdrop-filter:blur(10px);box-shadow:var(--shadow);font-size:13px;min-width:180px}
     .status-time{font-weight:600;font-size:14px}
     .status-weather{color:var(--muted);font-size:13px;white-space:nowrap}
     .section{margin:22px 0 8px}
@@ -35,8 +35,7 @@
     .tile:focus-visible{box-shadow:0 0 0 2px var(--ring)}
     .tile::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.0;transition:opacity .35s ease;background:linear-gradient(110deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.22) 50%,rgba(255,255,255,0) 100%);mask:linear-gradient(110deg,transparent 0%,black 40%,black 60%,transparent 100%);-webkit-mask:linear-gradient(110deg,transparent 0%,black 40%,black 60%,transparent 100%);animation:glide 7s cubic-bezier(.22,1,.36,1) infinite}
     .tile:hover::after{opacity:.9}
-    @keyframes glide{0%{transform:translateX(-55%)}60%{transform:translateX(120%)}100%{transform:translateX(120%)}
-    }
+    @keyframes glide{0%{transform:translateX(-55%)}60%{transform:translateX(120%)}100%{transform:translateX(120%)}}
     .label{position:relative;z-index:1;font-size:14px;font-weight:600;text-shadow:0 1px 0 rgba(0,0,0,.15)}
   </style>
 </head>
@@ -108,20 +107,58 @@
     }
     setInterval(updateDateTime,1000); updateDateTime();
 
-    async function updateWeather(){
+    async function fetchWeather(lat, lon){
       try{
-        const res=await fetch('https://wttr.in/?format=%c+%t+%C&m');
-        const text=await res.text();
-        const parts=text.trim().split(/\s+/);
-        const icon=parts.shift()||'';
-        const temp=parts.shift()||'';
-        const condition=parts.join(' ');
-        document.getElementById('weather').textContent=`${icon} ${temp} • ${condition}`;
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const temp = Math.round(data.current.temperature_2m);
+        const code = data.current.weather_code;
+        const {icon, text} = weatherFromCode(code);
+        // fetch city name via reverse geocoding
+        const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+        const geo = await geoRes.json();
+        const city = geo.address.city || geo.address.town || geo.address.village || geo.address.state || "Location";
+        document.getElementById('weather').textContent = `${city}  ${icon} ${temp}°C • ${text}`;
       }catch(e){
         document.getElementById('weather').textContent='Weather unavailable';
       }
     }
+
+    function weatherFromCode(code){
+      const map = {
+        0:{i:'☀️',t:'Clear'},
+        1:{i:'🌤️',t:'Mainly clear'},
+        2:{i:'⛅',t:'Partly cloudy'},
+        3:{i:'☁️',t:'Overcast'},
+        45:{i:'🌫️',t:'Fog'}, 48:{i:'🌫️',t:'Depositing rime fog'},
+        51:{i:'🌦️',t:'Light drizzle'}, 53:{i:'🌦️',t:'Drizzle'}, 55:{i:'🌧️',t:'Heavy drizzle'},
+        56:{i:'🌦️',t:'Freezing drizzle'}, 57:{i:'🌧️',t:'Freezing drizzle'},
+        61:{i:'🌦️',t:'Light rain'}, 63:{i:'🌧️',t:'Rain'}, 65:{i:'🌧️',t:'Heavy rain'},
+        66:{i:'🌧️',t:'Freezing rain'}, 67:{i:'🌧️',t:'Freezing rain'},
+        71:{i:'🌨️',t:'Light snow'}, 73:{i:'🌨️',t:'Snow'}, 75:{i:'❄️',t:'Heavy snow'},
+        77:{i:'🌨️',t:'Snow grains'},
+        80:{i:'🌦️',t:'Showers'}, 81:{i:'🌧️',t:'Heavy showers'}, 82:{i:'🌧️',t:'Violent showers'},
+        85:{i:'🌨️',t:'Snow showers'}, 86:{i:'❄️',t:'Heavy snow showers'},
+        95:{i:'⛈️',t:'Thunderstorm'}, 96:{i:'⛈️',t:'Thunderstorm + hail'}, 99:{i:'⛈️',t:'Thunderstorm + heavy hail'}
+      };
+      return {icon: (map[code]?.i)||'🌡️', text: (map[code]?.t)||'Weather'};
+    }
+
+    function updateWeather(){
+      const fallback = {lat:37.5665, lon:126.9780}; // Seoul
+      if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(
+          pos => fetchWeather(pos.coords.latitude, pos.coords.longitude),
+          _err => fetchWeather(fallback.lat, fallback.lon),
+          {maximumAge: 1800000, timeout: 6000}
+        );
+      } else {
+        fetchWeather(fallback.lat, fallback.lon);
+      }
+    }
     updateWeather();
+    setInterval(updateWeather, 30*60*1000);
 
     function setDailyQuote(){
       const quotes=[
@@ -144,3 +181,4 @@
   </script>
 </body>
 </html>
+
