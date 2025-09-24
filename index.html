@@ -37,6 +37,18 @@
     .tile:hover::after{opacity:.9}
     @keyframes glide{0%{transform:translateX(-55%)}60%{transform:translateX(120%)}100%{transform:translateX(120%)}}
     .label{position:relative;z-index:1;font-size:14px;font-weight:600;text-shadow:0 1px 0 rgba(0,0,0,.15)}
+    .secret-link {
+  color: inherit;            /* use same color as surrounding text */
+  text-decoration: none;     /* no underline by default */
+  cursor: pointer;
+  transition: opacity .25s ease, border-color .25s ease;
+  border-bottom: 1px dashed transparent; /* invisible border baseline */
+}
+
+.secret-link:hover {
+  border-color: currentColor; /* dashed underline appears on hover */
+  opacity: 0.85;              /* subtle fade effect */
+}
   </style>
 </head>
 <body>
@@ -46,7 +58,7 @@
         <div class="brand">
           <div class="pill"><i></i></div>
           <div>
-            <h1>Welcome, <a href="frankpattiasina.com">Frank</a></h1>
+            <h1>Welcome, <a href="frankpattiasina.com" class="secret-link">Frank</a></h1>
             <div id="daily-quote" class="sub">Loading quote…</div>
           </div>
         </div>
