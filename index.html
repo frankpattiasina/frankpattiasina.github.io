@@ -98,87 +98,93 @@
     </div>
   </div>
 
-  <script>
-    function updateDateTime(){
-      const now=new Date();
-      const time=now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-      const date=now.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'});
-      document.getElementById('datetime').textContent=`${date} • ${time}`;
-    }
-    setInterval(updateDateTime,1000); updateDateTime();
+<script>
+  function updateDateTime(){
+    const now=new Date();
+    const time=now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    const date=now.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'});
+    document.getElementById('datetime').textContent=`${date} • ${time}`;
+  }
+  setInterval(updateDateTime,1000); updateDateTime();
 
-    async function fetchWeather(lat, lon){
-      try{
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`;
-        const res = await fetch(url);
-        const data = await res.json();
-        const temp = Math.round(data.current.temperature_2m);
-        const code = data.current.weather_code;
-        const {icon, text} = weatherFromCode(code);
-        // fetch city name via reverse geocoding
-        const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-        const geo = await geoRes.json();
-        const city = geo.address.city || geo.address.town || geo.address.village || geo.address.state || "Location";
-        document.getElementById('weather').textContent = `${city}  ${icon} ${temp}°C • ${text}`;
-      }catch(e){
-        document.getElementById('weather').textContent='Weather unavailable';
-      }
-    }
+  async function fetchWeather(lat, lon){
+    try{
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const temp = Math.round(data.current.temperature_2m);
+      const code = data.current.weather_code;
+      const {icon, text} = weatherFromCode(code);
 
-    function weatherFromCode(code){
-      const map = {
-        0:{i:'☀️',t:'Clear'},
-        1:{i:'🌤️',t:'Mainly clear'},
-        2:{i:'⛅',t:'Partly cloudy'},
-        3:{i:'☁️',t:'Overcast'},
-        45:{i:'🌫️',t:'Fog'}, 48:{i:'🌫️',t:'Depositing rime fog'},
-        51:{i:'🌦️',t:'Light drizzle'}, 53:{i:'🌦️',t:'Drizzle'}, 55:{i:'🌧️',t:'Heavy drizzle'},
-        56:{i:'🌦️',t:'Freezing drizzle'}, 57:{i:'🌧️',t:'Freezing drizzle'},
-        61:{i:'🌦️',t:'Light rain'}, 63:{i:'🌧️',t:'Rain'}, 65:{i:'🌧️',t:'Heavy rain'},
-        66:{i:'🌧️',t:'Freezing rain'}, 67:{i:'🌧️',t:'Freezing rain'},
-        71:{i:'🌨️',t:'Light snow'}, 73:{i:'🌨️',t:'Snow'}, 75:{i:'❄️',t:'Heavy snow'},
-        77:{i:'🌨️',t:'Snow grains'},
-        80:{i:'🌦️',t:'Showers'}, 81:{i:'🌧️',t:'Heavy showers'}, 82:{i:'🌧️',t:'Violent showers'},
-        85:{i:'🌨️',t:'Snow showers'}, 86:{i:'❄️',t:'Heavy snow showers'},
-        95:{i:'⛈️',t:'Thunderstorm'}, 96:{i:'⛈️',t:'Thunderstorm + hail'}, 99:{i:'⛈️',t:'Thunderstorm + heavy hail'}
-      };
-      return {icon: (map[code]?.i)||'🌡️', text: (map[code]?.t)||'Weather'};
-    }
+      // Reverse geocode via Open-Meteo Geocoding API (CORS-friendly)
+      const geoRes = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=en&format=json`
+      );
+      const geo = await geoRes.json();
+      const r = (geo && geo.results && geo.results[0]) || {};
+      const city = r.name || r.admin2 || r.admin1 || "Location";
 
-    function updateWeather(){
-      const fallback = {lat:37.5665, lon:126.9780}; // Seoul
-      if(navigator.geolocation){
-        navigator.geolocation.getCurrentPosition(
-          pos => fetchWeather(pos.coords.latitude, pos.coords.longitude),
-          _err => fetchWeather(fallback.lat, fallback.lon),
-          {maximumAge: 1800000, timeout: 6000}
-        );
-      } else {
-        fetchWeather(fallback.lat, fallback.lon);
-      }
+      document.getElementById('weather').textContent = `${city}: ${icon} ${temp}°C • ${text}`;
+    }catch(e){
+      document.getElementById('weather').textContent='Weather unavailable';
+      console.error(e);
     }
-    updateWeather();
-    setInterval(updateWeather, 30*60*1000);
+  }
 
-    function setDailyQuote(){
-      const quotes=[
-        {text:"The unexamined life is not worth living.", author:"Socrates"},
-        {text:"Happiness depends upon ourselves.", author:"Aristotle"},
-        {text:"Man is condemned to be free.", author:"Jean-Paul Sartre"},
-        {text:"God is dead. God remains dead. And we have killed him.", author:"Friedrich Nietzsche"},
-        {text:"Hell is other people.", author:"Jean-Paul Sartre"},
-        {text:"One cannot step twice in the same river.", author:"Heraclitus"},
-        {text:"I think, therefore I am.", author:"René Descartes"},
-        {text:"Life must be understood backward. But it must be lived forward.", author:"Søren Kierkegaard"},
-        {text:"Man is the measure of all things.", author:"Protagoras"},
-        {text:"Even while they teach, men learn.", author:"Seneca"}
-      ];
-      const dayIndex=new Date().getDate()%quotes.length;
-      const quote=quotes[dayIndex];
-      document.getElementById('daily-quote').textContent=`“${quote.text}” — ${quote.author}`;
+  function weatherFromCode(code){
+    const map = {
+      0:{i:'☀️',t:'Clear'},
+      1:{i:'🌤️',t:'Mainly clear'},
+      2:{i:'⛅',t:'Partly cloudy'},
+      3:{i:'☁️',t:'Overcast'},
+      45:{i:'🌫️',t:'Fog'}, 48:{i:'🌫️',t:'Depositing rime fog'},
+      51:{i:'🌦️',t:'Light drizzle'}, 53:{i:'🌦️',t:'Drizzle'}, 55:{i:'🌧️',t:'Heavy drizzle'},
+      56:{i:'🌦️',t:'Freezing drizzle'}, 57:{i:'🌧️',t:'Freezing drizzle'},
+      61:{i:'🌦️',t:'Light rain'}, 63:{i:'🌧️',t:'Rain'}, 65:{i:'🌧️',t:'Heavy rain'},
+      66:{i:'🌧️',t:'Freezing rain'}, 67:{i:'🌧️',t:'Freezing rain'},
+      71:{i:'🌨️',t:'Light snow'}, 73:{i:'🌨️',t:'Snow'}, 75:{i:'❄️',t:'Heavy snow'},
+      77:{i:'🌨️',t:'Snow grains'},
+      80:{i:'🌦️',t:'Showers'}, 81:{i:'🌧️',t:'Heavy showers'}, 82:{i:'🌧️',t:'Violent showers'},
+      85:{i:'🌨️',t:'Snow showers'}, 86:{i:'❄️',t:'Heavy snow showers'},
+      95:{i:'⛈️',t:'Thunderstorm'}, 96:{i:'⛈️',t:'Thunderstorm + hail'}, 99:{i:'⛈️',t:'Thunderstorm + heavy hail'}
+    };
+    return {icon: (map[code]?.i)||'🌡️', text: (map[code]?.t)||'Weather'};
+  }
+
+  function updateWeather(){
+    const fallback = {lat:37.5665, lon:126.9780}; // Seoul
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(
+        pos => fetchWeather(pos.coords.latitude, pos.coords.longitude),
+        _err => fetchWeather(fallback.lat, fallback.lon),
+        {maximumAge: 1800000, timeout: 6000}
+      );
+    } else {
+      fetchWeather(fallback.lat, fallback.lon);
     }
-    setDailyQuote();
-  </script>
+  }
+  updateWeather();
+  setInterval(updateWeather, 30*60*1000);
+
+  function setDailyQuote(){
+    const quotes=[
+      {text:"The unexamined life is not worth living.", author:"Socrates"},
+      {text:"Happiness depends upon ourselves.", author:"Aristotle"},
+      {text:"Man is condemned to be free.", author:"Jean-Paul Sartre"},
+      {text:"God is dead. God remains dead. And we have killed him.", author:"Friedrich Nietzsche"},
+      {text:"Hell is other people.", author:"Jean-Paul Sartre"},
+      {text:"One cannot step twice in the same river.", author:"Heraclitus"},
+      {text:"I think, therefore I am.", author:"René Descartes"},
+      {text:"Life must be understood backward. But it must be lived forward.", author:"Søren Kierkegaard"},
+      {text:"Man is the measure of all things.", author:"Protagoras"},
+      {text:"Even while they teach, men learn.", author:"Seneca"}
+    ];
+    const dayIndex=new Date().getDate()%quotes.length;
+    const quote=quotes[dayIndex];
+    document.getElementById('daily-quote').textContent=`“${quote.text}” — ${quote.author}`;
+  }
+  setDailyQuote();
+</script>
 </body>
 </html>
 
